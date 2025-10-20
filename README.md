@@ -1,115 +1,177 @@
-# Go Pay Server
+# Go 支付服务
 
-这是一个基于 Go 语言的支付服务器，为微信和支付宝支付提供统一的接口。它使用 Gin 框架构建，并集成了流行的支付 SDK。
+这是一个使用 Go 语言编写的支付服务库，集成了微信支付和支付宝支付功能。它被设计为可轻松集成到现有的 Go Web 项目中（尤其是使用 Gin 框架的项目）。
 
-## 功能
+## ✨ 功能特性
 
-- **微信支付:**
-  - 小程序支付
-  - 公众号支付
-  - 支付和退款通知
-  - 订单查询
-- **支付宝:**
-  - 小程序支付
-  - 支付和退款通知
-  - 订单查询
-- **微信小程序:**
-  - 用户登录和会话管理
-  - 手机号解密
-  - 二维码生成
-- **微信公众号:**
-  - 事件处理（例如，关注）
-  - 消息处理
-  - 模板消息推送
+- **微信支付 (WeChat Pay)**
+  - JSAPI 交易下单
+  - 交易退款
+  - 支付成功异步回调通知处理
+  - 退款成功异步回调通知处理
+  - 订单查询（支付与退款）
+  - 基于 `ArtisanCloud/PowerWeChat` 库
 
-## 依赖
+- **支付宝 (Alipay)**
+  - 小程序用户授权与登录
+  - 交易下单 (`TradeCreate`)
+  - 交易退款
+  - 支付与退款异步回调通知处理
+  - 订单查询（支付与退款）
+  - 基于 `go-pay/gopay` 库
 
-- [gin-gonic/gin](https://github.com/gin-gonic/gin): HTTP Web 框架。
-- [ArtisanCloud/PowerWeChat/v3](https://github.com/ArtisanCloud/PowerWeChat): 适用于 Go 的微信 SDK。
-- [go-pay/gopay](https://github.com/go-pay/gopay): 适用于 Go 的支付宝和微信支付 SDK。
-- [loveyu233/gb](https://github.com/loveyu233/gb): Go 的实用程序库。
+- **框架集成**
+  - 提供 Gin 框架的 `RouterGroup` 注册，方便快速集成 API 路由。
 
-## 安装
+## 📂 项目结构
 
-1.  克隆存储库：
-    ```bash
-    git clone <repository-url>
-    ```
-2.  安装依赖：
-    ```bash
-    go mod tidy
-    ```
-
-## 配置
-
-您需要通过提供微信和支付宝的必要凭据来配置应用程序。
-
-### 微信
-
-微信的配置由 `InitWXMiniProgramService`、`InitWXOfficialAccountAppService` 和 `InitWXWXPaymentApp` 函数处理。您需要为您的微信小程序、公众号和支付帐户提供 AppID、Secret 和其他相关详细信息。
-
-### 支付宝
-
-支付宝的配置由 `InitAliClient` 函数处理。您需要提供您的 AppID、私钥、AES 密钥以及您的公钥证书的路径。
-
-## 用法
-
-1.  使用您的配置初始化服务。
-2.  为 Gin 路由器注册处理程序。
-3.  运行 Gin 服务器。
-
-```go
-package main
-
-import (
-	"github.com/gin-gonic/gin"
-	"your-project/pay"
-)
-
-func main() {
-	// ... 您的配置设置 ...
-
-	// 初始化微信和支付宝服务
-	// pay.InitWXMiniProgramService(...)
-	// pay.InitWXOfficialAccountAppService(...)
-	// pay.InitWXWXPaymentApp(...)
-	// pay.InitAliClient(...)
-
-	r := gin.Default()
-	apiGroup := r.Group("/api")
-
-	// 注册处理程序
-	pay.InsWX.WXMini.RegisterHandlers(apiGroup)
-	pay.InsWX.WXOfficial.RegisterHandlers(apiGroup)
-	pay.InsWX.WXPay.RegisterHandlers(apiGroup)
-	pay.InsZFB.RegisterHandlers(apiGroup)
-
-	r.Run(":8080")
-}
+```
+.
+├── go.mod
+├── go.sum
+├── payment.go          # 微信支付的核心结构与初始化
+├── patment_server.go   # 微信支付的 Gin API 路由与处理逻辑 (文件名疑似拼写错误, 应为 payment_server.go)
+├── zfb_server.go       # 支付宝支付的 Gin API 路由与处理逻辑
+└── README.md           # 本文档
 ```
 
-## API 端点
+## 🚀 快速开始
 
-### 微信小程序
+### 1. 安装依赖
 
-- `POST /wx/login`: 小程序登录。
+```bash
+go get github.com/ArtisanCloud/PowerWeChat/v3
+go get github.com/go-pay/gopay
+go get github.com/gin-gonic/gin
+go get github.com/loveyu233/gb
+```
 
-### 微信公众号
+### 2. 初始化与配置
 
-- `GET /wx/callback`: 回调验证。
-- `POST /wx/callback`: 接收消息和事件。
-- `POST /wx/push`: 推送消息。
+#### 微信支付
 
-### 微信支付
+你需要先实现 `WXPayImp` 接口，然后调用 `InitWXWXPaymentApp` 来初始化一个微信支付客户端。
 
-- `POST /wx/notify/payment`: 支付通知回调。
-- `POST /wx/notify/refund`: 退款通知回调。
-- `POST /wx/pay`: 创建支付。
-- `POST /wx/refund`: 创建退款。
+```go
+import "your/path/to/pay"
 
-### 支付宝
+// 1. 实现 WXPayImp 接口
+type MyWXPayHandler struct{}
 
-- `POST /zfb/login`: 支付宝小程序登录。
-- `POST /zfb/notify`: 支付和退款通知回调。
-- `POST /zfb/pay`: 创建支付。
-- `POST /zfb/refund`: 创建退款。
+func (h *MyWXPayHandler) PayNotify(orderId string, attach string) error {
+    // 处理支付成功逻辑，例如更新订单状态
+    return nil
+}
+func (h *MyWXPayHandler) RefundNotify(orderId string) error {
+    // 处理退款成功逻辑
+    return nil
+}
+func (h *MyWXPayHandler) Pay(c *gin.Context) (*pay.PayRequest, error) {
+    // 从请求中解析并返回支付参数
+    var req pay.PayRequest
+    // ... 解析逻辑 ...
+    return &req, nil
+}
+func (h *MyWXPayHandler) Refund(c *gin.Context) (*pay.RefundRequest, error) {
+    // 从请求中解析并返回退款参数
+    var req pay.RefundRequest
+    // ... 解析逻辑 ...
+    return &req, nil
+}
+
+
+// 2. 配置并初始化
+wxPayConfig := pay.WXPaymentAppConfig{
+    Payment: pay.Payment{
+        AppID:       "你的微信 AppID",
+        MchID:       "你的商户号",
+        MchApiV3Key: "你的 APIv3 密钥",
+        // ... 其他证书和配置
+    },
+    WXPayImp: &MyWXPayHandler{},
+}
+
+wxPayClient, err := pay.InitWXWXPaymentApp(wxPayConfig)
+if err != nil {
+    // 处理错误
+}
+
+// 3. 注册到 Gin 路由
+router := gin.Default()
+wxGroup := router.Group("/api")
+wxPayClient.RegisterHandlers(wxGroup)
+```
+
+#### 支付宝
+
+你需要先实现 `ZfbMiniImp` 接口，然后调用 `InitAliClient` 来初始化支付宝客户端。
+
+```go
+import "your/path/to/pay"
+
+// 1. 实现 ZfbMiniImp 接口
+type MyZFBPayHandler struct{}
+
+// ... 实现接口的所有方法，例如 Pay, Refund, PayNotify 等 ...
+
+func (h *MyZFBPayHandler) Pay(c *gin.Context) (*pay.ZFBPayParam, error) {
+    // 从请求中解析并返回支付参数
+    var param pay.ZFBPayParam
+    // ... 解析逻辑 ...
+    return &param, nil
+}
+
+
+// 2. 初始化
+err := pay.InitAliClient(
+    "你的支付宝 AppID",
+    "你的应用私钥",
+    "你的 AES 密钥",
+    "应用公钥证书路径",
+    "支付宝公钥证书路径",
+    "支付宝根证书路径",
+    "异步通知回调 URL",
+    true, // 是否保存日志
+    &MyZFBPayHandler{},
+)
+if err != nil {
+    // 处理错误
+}
+
+// 3. 注册到 Gin 路由
+router := gin.Default()
+zfbGroup := router.Group("/api")
+pay.InsZFB.RegisterHandlers(zfbGroup)
+
+```
+
+### 3. 运行
+
+你可以将此项目作为库导入到你的主应用中，或者直接运行（如果包含 `main` 函数）。
+
+```bash
+# 编译
+go build
+
+# 运行 (假设你的主文件是 main.go)
+go run main.go
+```
+
+## 📦 API 端点
+
+### 微信支付 (前缀: `/wx`)
+
+- `POST /pay`: 创建支付订单
+- `POST /refund`: 发起退款
+- `POST /notify/payment`: 支付异步回调
+- `POST /notify/refund`: 退款异步回调
+
+### 支付宝 (前缀: `/zfb`)
+
+- `POST /login`: 小程序登录/授权
+- `POST /pay`: 创建支付订单
+- `POST /refund`: 发起退款
+- `POST /notify`: 支付/退款异步回调
+
+---
+*该 README 文件由 AI 根据项目代码自动生成。*

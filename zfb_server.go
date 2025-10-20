@@ -24,7 +24,7 @@ type ZfbMiniImp interface {
 	IsExistsUser(unionID string) (user any, exists bool, err error)
 
 	// CreateUser 创建新用户
-	CreateUser(phoneNumber, unionID, openID, areaCodeByIP, clientIP string) (user any, err error)
+	CreateUser(phoneNumber, unionID, openID, clientIP string) (user any, err error)
 
 	// GenerateToken 生成用户token
 	GenerateToken(user any, sessionKey string) (data any, err error)
@@ -282,7 +282,12 @@ func (a *ZFBClient) login(c *gin.Context) {
 			gb.ResponseError(c, gb.ErrRequestAli.WithMessage("获取支付宝小程序用户数据失败"))
 		}
 
-		if user, err = a.zfbMiniImp.CreateUser(decryption.Mobile, session.UnionId, session.OpenId, getAreaCodeByIp(c.ClientIP()), c.ClientIP()); err != nil {
+		if decryption == nil {
+			gb.ResponseError(c, gb.ErrRequestAli.WithMessage("获取支付宝小程序用户数据失败"))
+			return
+		}
+
+		if user, err = a.zfbMiniImp.CreateUser(decryption.Mobile, session.UnionId, session.OpenId, c.ClientIP()); err != nil {
 			gb.ResponseError(c, gb.ErrDatabase.WithMessage("创建用户信息失败:%s", err.Error()))
 			return
 		}
